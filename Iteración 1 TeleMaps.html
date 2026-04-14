@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeleMaps</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --primary: #4285F4; --vip: #FFD700; --cabinas: #4285F4; --dark: #121212;
+            --glass: rgba(18, 18, 18, 0.9); --white: #ffffff; --danger: #ff4444;
+        }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Inter', sans-serif; background: #000; overflow: hidden; color: white; }
+
+        header {
+            position: absolute; top: 0; width: 100%; height: 65px;
+            background: var(--glass); backdrop-filter: blur(15px);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 25px; z-index: 2000; border-bottom: 1px solid rgba(255,255,255,0.1);
+            box-sizing: border-box;
+        }
+        
+        .logo { font-weight: 800; font-size: 24px; color: var(--primary); letter-spacing: -1px; }
+        .logo span { color: var(--white); }
+
+        .plan-badge {
+            background: rgba(255,255,255,0.05);
+            padding: 6px 16px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.2);
+            cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 10px;
+        }
+        .plan-badge:hover { background: rgba(255,255,255,0.15); transform: translateY(-2px); border-color: var(--primary); }
+        .plan-dot { width: 8px; height: 8px; border-radius: 50%; background: #888; box-shadow: 0 0 10px rgba(136, 136, 136, 0.5); }
+        .plan-text { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+
+        .plan-cabinas .plan-dot { background: var(--cabinas); box-shadow: 0 0 10px var(--cabinas); }
+        .plan-cabinas .plan-text { color: var(--cabinas); }
+        .plan-total .plan-dot { background: var(--vip); box-shadow: 0 0 10px var(--vip); }
+        .plan-total .plan-text { color: var(--vip); }
+
+        .search-box {
+            position: absolute; top: 85px; left: 20px; z-index: 1000;
+            background: white; padding: 6px; border-radius: 12px;
+            display: flex; width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+        }
+        .search-box input { border: none; outline: none; flex: 1; padding: 10px; font-size: 15px; color: #333; }
+        .search-box button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; text-transform: uppercase; }
+
+        .history-panel {
+            position: absolute; top: 150px; left: 20px; z-index: 900;
+            background: var(--glass); backdrop-filter: blur(10px);
+            width: 320px; max-height: 300px; border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.1); overflow-y: auto; padding: 15px;
+            box-sizing: border-box;
+        }
+        .history-panel h4 { margin: 0 0 10px 0; font-size: 12px; text-transform: uppercase; color: #888; letter-spacing: 1px; }
+        
+        .history-item { 
+            padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); 
+            font-size: 13px; display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; transition: background 0.2s;
+        }
+        .history-item:hover { background: rgba(255,255,255,0.1); }
+        .history-item:last-child { border-bottom: none; }
+        .history-dest { font-weight: 600; color: var(--white); }
+        .history-type { font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.05); color: #888; pointer-events: none; text-transform: uppercase; }
+
+        #map { height: 100vh; width: 100%; z-index: 1; cursor: crosshair; }
+
+        .preview-card {
+            position: absolute; bottom: 30px; right: 20px; z-index: 1000;
+            background: white; width: 340px; border-radius: 24px;
+            overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.4); display: none; color: #333;
+        }
+        .preview-content { padding: 20px; }
+        
+        .weather-info {
+            display: flex; align-items: center; gap: 10px; margin: 10px 0;
+            padding: 8px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid var(--primary);
+        }
+        .temp-val { font-size: 18px; font-weight: 800; color: #1a1a1a; }
+        .weather-desc { font-size: 12px; color: #666; font-weight: 600; }
+
+        .crowd-info {
+            font-size: 11px; font-weight: 700; color: #555; margin-bottom: 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            background: #eee; padding: 6px 12px; border-radius: 8px;
+        }
+        #crowd-val { font-weight: 900; letter-spacing: 0.5px; }
+
+        .btn-action {
+            background: var(--primary);
+            color: white; border: none; width: 100%; padding: 16px; border-radius: 14px; font-weight: 800; cursor: pointer; transition: 0.3s;
+            text-transform: uppercase;
+        }
+        .btn-action:hover { filter: brightness(1.1); }
+        .btn-action:disabled { background: #ccc !important; cursor: not-allowed; }
+
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+            z-index: 3000; display: none; align-items: center; justify-content: center;
+        }
+        .payment-card { background: white; color: #333; width: 480px; padding: 30px; border-radius: 24px; text-align: center; box-sizing: border-box;}
+        
+        .option { border: 2px solid #eee; padding: 15px; border-radius: 15px; cursor: pointer; transition: 0.3s; position: relative; margin-bottom: 15px;}
+        .option:hover:not(.disabled) { border-color: var(--primary); background: #f0f7ff; }
+        .option.disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); background: #f9f9f9; }
+        .price { font-size: 20px; font-weight: 800; color: var(--primary); }
+
+        /* ESTILOS DEL RADAR */
+        .radar-container {
+            width: 20px; height: 20px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .radar-dot {
+            width: 10px; height: 10px;
+            background: currentColor;
+            border-radius: 50%;
+            z-index: 2;
+        }
+        .radar-wave {
+            position: absolute;
+            width: 100%; height: 100%;
+            border: 2px solid currentColor;
+            border-radius: 50%;
+            animation: radarWaves 2s linear infinite;
+            opacity: 0;
+            box-sizing: border-box;
+        }
+        .radar-wave:nth-child(2) { animation-delay: 1s; }
+
+        @keyframes radarWaves {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: scale(4); opacity: 0; }
+        }
+
+        .portal-marker { width: 40px; height: 40px; border: 3px solid var(--primary); border-radius: 50%; box-shadow: 0 0 15px var(--primary); animation: portalPulse 1.5s infinite; }
+        .user-marker { width: 20px; height: 20px; background: #00ff00; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px #00ff00; }
+        
+        @keyframes portalPulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        
+        .flash { position: fixed; inset: 0; background: white; z-index: 10000; opacity: 0; pointer-events: none; transition: 0.4s; }
+        .water-warning { color: var(--danger); font-weight: 800; font-size: 11px; margin-top: 5px; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="flash" id="flash"></div>
+
+    <header>
+        <div class="logo">Tele<span>Maps</span></div>
+        <div class="plan-badge" id="plan-trigger" onclick="openSubscriptionMenu()">
+            <div class="plan-dot"></div>
+            <div class="plan-text" id="plan-display">Plan Estándar</div>
+        </div>
+    </header>
+
+    <div class="search-box">
+        <input type="text" id="search-input" placeholder="Buscar destino...">
+        <button onclick="manualSearch()">BUSCAR</button>
+    </div>
+
+    <div class="history-panel" id="history-panel">
+        <h4>Historial de Saltos</h4>
+        <div id="history-list">
+            <div style="font-size: 11px; color: #555; text-align: center; padding: 10px;">No hay viajes recientes</div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="preview-card" id="preview">
+        <div class="preview-content">
+            <h3 id="prev-title">Destino</h3>
+            <p id="dist-info" style="font-size: 12px; color: #666;"></p>
+            
+            <div class="weather-info">
+                <span id="weather-icon">📡</span>
+                <div>
+                    <div class="temp-val" id="temp-val">--°C</div>
+                    <div class="weather-desc" id="weather-desc">Consultando satélites...</div>
+                </div>
+            </div>
+
+            <div class="crowd-info">
+                <span>AFLUENCIA ESTIMADA</span>
+                <span id="crowd-val">Calculando...</span>
+            </div>
+
+            <div id="water-alert" class="water-warning">⚠️ RIESGO DE AHOGAMIENTO</div>
+            <button class="btn-action" id="jump-btn" onclick="handleTransportRequest()">INICIAR SALTO</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="payment-card" id="modal-content"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let userPos = [40.416, -3.703]; 
+        let userCountryCode = 'es';
+        let selectedLocation = null;
+        let activeSub = "NONE";
+        let userMarker = null;
+        let portalMarker = null;
+        let targetSignalMarker = null;
+        let jumpLine = null; 
+        let travelHistory = []; 
+
+        const SUB_PRICES = { CABINAS: 15000, TOTAL: 45000, UPGRADE_TOTAL: 32000 };
+
+        const map = L.map('map', { zoomControl: false }).setView(userPos, 6);
+        L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}').addTo(map);
+
+        userMarker = L.marker(userPos, {
+            icon: L.divIcon({ className: '', html: '<div class="user-marker"></div>', iconSize: [20, 20] })
+        }).addTo(map);
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((position) => {
+                userPos = [position.coords.latitude, position.coords.longitude];
+                map.setView(userPos, 13);
+                userMarker.setLatLng(userPos);
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${userPos[0]}&lon=${userPos[1]}&addressdetails=1`)
+                    .then(r => r.json()).then(d => { if(d.address) userCountryCode = d.address.country_code; });
+            });
+        }
+
+        map.on('click', e => reverseGeocode(e.latlng.lat, e.latlng.lng));
+
+        async function manualSearch() {
+            const q = document.getElementById('search-input').value;
+            if(!q) return;
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}&limit=1&addressdetails=1`);
+                const data = await res.json();
+                if(data[0]) reverseGeocode(data[0].lat, data[0].lon);
+                else alert("Ubicación no encontrada en la red.");
+            } catch(e) { console.error(e); }
+        }
+
+        async function fetchRealWeather(lat, lng) {
+            try {
+                const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code`);
+                const data = await response.json();
+                const temp = Math.round(data.current.temperature_2m);
+                const code = data.current.weather_code;
+                let desc = "Despejado"; let icon = "☀️";
+                if(code >= 1 && code <= 3) { desc = "Parcialmente nublado"; icon = "⛅"; }
+                else if(code >= 45 && code <= 48) { desc = "Niebla"; icon = "🌫️"; }
+                else if(code >= 51 && code <= 67) { desc = "Lluvia"; icon = "🌧️"; }
+                else if(code >= 71 && code <= 77) { desc = "Nieve"; icon = "❄️"; }
+                else if(code >= 80) { desc = "Tormenta"; icon = "⛈️"; }
+                return { temp, desc, icon };
+            } catch (e) {
+                return { temp: "--", desc: "Error de sensor", icon: "⚠️" };
+            }
+        }
+
+        async function reverseGeocode(lat, lng) {
+            let city = "Zona Cuántica Desconocida";
+            let destCountryCode = '??';
+            let isInt = false;
+            let isWater = false;
+            let cityCenter = [lat, lng];
+            let crowdData = { label: "MÍNIMA", color: "#28a745" };
+
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`);
+                const data = await res.json();
+                
+                if (!data || !data.address || (!data.address.country && !data.address.ocean)) {
+                    isWater = true;
+                } else {
+                    const type = (data.type || "").toLowerCase();
+                    const category = (data.category || "").toLowerCase();
+                    const displayName = (data.display_name || "").toLowerCase();
+                    const strictWater = ['ocean', 'sea', 'mar', 'rio', 'river', 'lake', 'lago', 'water', 'basin', 'reservoir'];
+                    const urbanEvidence = data.address.road || data.address.suburb || data.address.city || data.address.town || data.address.village || data.address.postcode || data.address.hamlet;
+                    const matchesWater = strictWater.some(kw => displayName.includes(kw) || type.includes(kw) || category.includes(kw));
+                    isWater = matchesWater && !urbanEvidence;
+
+                    const cityName = data.address.city || data.address.town || data.address.village || data.address.state || data.address.country || "Punto Terrestre";
+                    city = cityName;
+                    destCountryCode = data.address.country_code;
+                    isInt = destCountryCode !== userCountryCode;
+                    
+                    const searchRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${cityName},${data.address.country || ''}&limit=1&addressdetails=1`);
+                    const searchData = await searchRes.json();
+                    
+                    if (searchData[0]) {
+                        cityCenter = [parseFloat(searchData[0].lat), parseFloat(searchData[0].lon)];
+                        const importance = searchData[0].importance || 0.01;
+                        const hour = new Date().getHours();
+                        let multiplier = (hour > 8 && hour < 22) ? 1.5 : 0.2;
+                        const densityScore = Math.pow(importance, 2.5) * multiplier;
+                        
+                        if (densityScore > 0.75) crowdData = { label: "MUY ALTA", color: "#dc3545" };
+                        else if (densityScore > 0.45) crowdData = { label: "ALTA", color: "#fd7e14" };
+                        else if (densityScore > 0.20) crowdData = { label: "MEDIA", color: "#ffc107" };
+                        else if (densityScore > 0.05) crowdData = { label: "BAJA", color: "#17a2b8" };
+                        else crowdData = { label: "MUY BAJA / MÍNIMA", color: "#28a745" };
+                    }
+                }
+            } catch (error) { 
+                isWater = true; 
+            }
+
+            const realWeather = await fetchRealWeather(lat, lng);
+
+            selectedLocation = { 
+                lat, lng, city, isWater,
+                centerPos: cityCenter,
+                isInternational: isInt, 
+                countryCode: destCountryCode, 
+                distance: getDist(userPos[0], userPos[1], lat, lng),
+                weather: realWeather,
+                crowd: crowdData
+            };
+
+            updatePreviewUI();
+        }
+
+        function updatePreviewUI() {
+            if(!selectedLocation) return;
+            if(jumpLine) map.removeLayer(jumpLine);
+            if(targetSignalMarker) map.removeLayer(targetSignalMarker);
+
+            const statusColor = selectedLocation.isWater ? 'var(--danger)' : 'var(--primary)';
+
+            // TRAZADO DE LÍNEA
+            const latlngs = [userPos, [selectedLocation.lat, selectedLocation.lng]];
+            jumpLine = L.polyline(latlngs, { color: statusColor, weight: 2, dashArray: '10, 10', opacity: 0.7 }).addTo(map);
+
+            // IMPLEMENTACIÓN DE SEÑAL DE RADAR
+            targetSignalMarker = L.marker([selectedLocation.lat, selectedLocation.lng], {
+                icon: L.divIcon({ 
+                    className: '', 
+                    html: `
+                        <div class="radar-container" style="color:${statusColor}">
+                            <div class="radar-wave"></div>
+                            <div class="radar-wave"></div>
+                            <div class="radar-dot"></div>
+                        </div>`, 
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20]
+                })
+            }).addTo(map);
+            
+            document.getElementById('prev-title').innerText = selectedLocation.city;
+            document.getElementById('dist-info').innerText = `${Math.round(selectedLocation.distance)} km | ${selectedLocation.isInternational ? 'Internacional 🌍' : 'Nacional 🏳️'}`;
+            document.getElementById('temp-val').innerText = `${selectedLocation.weather.temp}°C`;
+            document.getElementById('weather-desc').innerText = selectedLocation.weather.desc;
+            document.getElementById('weather-icon').innerText = selectedLocation.weather.icon;
+            
+            const crowdEl = document.getElementById('crowd-val');
+            crowdEl.innerText = selectedLocation.crowd.label;
+            crowdEl.style.color = selectedLocation.crowd.color;
+
+            const alertBox = document.getElementById('water-alert');
+            const jumpBtn = document.getElementById('jump-btn');
+            
+            if(selectedLocation.isWater) {
+                alertBox.style.display = 'block'; 
+                jumpBtn.disabled = true; 
+                jumpBtn.innerText = "SALTO BLOQUEADO";
+            } else {
+                alertBox.style.display = 'none'; 
+                jumpBtn.disabled = false; 
+                jumpBtn.innerText = "INICIAR SALTO";
+            }
+            document.getElementById('preview').style.display = 'block';
+            map.flyTo([selectedLocation.lat, selectedLocation.lng], 14);
+        }
+
+        function getDist(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2-lat1) * Math.PI / 180;
+            const dLon = (lon2-lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function openSubscriptionMenu() {
+            const modal = document.getElementById('modal-content');
+            let content = `<h2 style="margin-top:0">Suscripciones Quantum</h2>`;
+            if (activeSub === "NONE") {
+                content += `
+                    <p style="font-size:14px; color:#666;">Selecciona un plan corporativo para saltos ilimitados.</p>
+                    <div class="option" onclick="setSub('CABINAS')" style="text-align:left; border-color:var(--cabinas);">
+                        <div style="font-weight:800; color:var(--cabinas);">PLAN CABINAS</div>
+                        <div style="font-size:11px;">Centros ilimitados + 50% en COORDENADAS</div>
+                        <div class="price" style="font-size:18px; color:#333; margin-top:5px;">${SUB_PRICES.CABINAS.toLocaleString()}€/mes</div>
+                    </div>
+                    <div class="option" onclick="setSub('TOTAL')" style="text-align:left; border-color:var(--vip);">
+                        <div style="font-weight:800; color:var(--vip);">PLAN TOTAL VIP</div>
+                        <div style="font-size:11px;">Transporte total sin límites nacionales.</div>
+                        <div class="price" style="font-size:18px; color:#333; margin-top:5px;">${SUB_PRICES.TOTAL.toLocaleString()}€/mes</div>
+                    </div>`;
+            } else if (activeSub === "CABINAS") {
+                content += `
+                    <p style="font-size:14px; color:#666;">Mejora tu Plan Cabinas con tarifa preferencial:</p>
+                    <div class="option" onclick="setSub('TOTAL')" style="text-align:left; border-color:var(--vip); background: #fffdf0;">
+                        <div style="position:absolute; top:0; right:0; background:var(--vip); color:black; font-size:9px; padding:3px 8px; font-weight:bold;">UPGRADE</div>
+                        <div style="font-weight:800; color:var(--vip);">MEJORAR A PLAN TOTAL VIP</div>
+                        <div class="price" style="font-size:18px; color:#333; margin-top:5px;"><strike style="color:#999; font-size:14px;">${SUB_PRICES.TOTAL.toLocaleString()}€</strike> ${SUB_PRICES.UPGRADE_TOTAL.toLocaleString()}€/mes</div>
+                    </div>`;
+            } else {
+                content += `<p style="font-weight:bold; color:var(--vip); margin-bottom:20px;">Protocolo TOTAL VIP activo.</p>`;
+            }
+            content += `<button class="btn-action" onclick="closeModal()" style="background:#eee; color:#333;">VOLVER</button>`;
+            modal.innerHTML = content;
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function handleTransportRequest() {
+            if(selectedLocation.isWater) return; 
+            const { isInternational, city } = selectedLocation;
+            if(activeSub === "TOTAL") {
+                if(isInternational) { alert(`Aviso VIP: Salto internacional restringido a cabina en ${city}.`); doJump('CABINA'); }
+                else doJump('EXACTO');
+                return;
+            }
+            renderPaymentModal();
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function renderPaymentModal() {
+            const { isInternational, distance, city } = selectedLocation;
+            let pCabina = Math.round(isInternational ? (1200 + distance * 0.4) : (250 + distance * 0.8));
+            let pExacto = Math.round(isInternational ? (3000 + distance * 0.8) : (600 + distance * 1.5));
+            const modal = document.getElementById('modal-content');
+            if (activeSub === "CABINAS") {
+                const pExactoDesc = Math.round(pExacto / 2);
+                modal.innerHTML = `<h2>Salto a ${city}</h2><div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin:20px 0;"><div class="option" onclick="confirmPayment('CABINA')"><h4>CENTRO CIUDAD (CABINA)</h4><div class="price">GRATIS</div></div><div class="option ${isInternational ? 'disabled' : ''}" onclick="${isInternational ? '' : "confirmPayment('EXACTO')" }">${!isInternational ? '<div style="position:absolute; top:0; right:0; background:#FF3D00; color:white; font-size:9px; padding:2px 5px; font-weight:bold;">-50%</div>' : ''}<h4>COORDENADAS</h4><div class="price">${isInternational ? '--' : pExactoDesc + '€'}</div></div></div><button class="btn-action" onclick="openSubscriptionMenu()">MEJORAR PLAN</button><p onclick="closeModal()" style="cursor:pointer; margin-top:10px; font-size:12px; color:#999">Cancelar</p>`;
+            } else {
+                modal.innerHTML = `<h2>Autorización de Salto</h2><div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin:20px 0;"><div class="option" onclick="confirmPayment('CABINA')"><h4>CENTRO CIUDAD (CABINA)</h4><div class="price">${pCabina}€</div></div><div class="option ${isInternational ? 'disabled' : ''}" onclick="${isInternational ? '' : "confirmPayment('EXACTO')" }"><h4>COORDENADAS</h4><div class="price">${isInternational ? '--' : pExacto + '€'}</div></div></div><p style="font-size:11px;">Tarifas optimizadas. <span style="color:var(--primary); cursor:pointer; font-weight:bold;" onclick="openSubscriptionMenu()">Ver suscripciones</span></p><button class="btn-action" onclick="closeModal()" style="background:#eee; color:#333;">CANCELAR</button>`;
+            }
+        }
+
+        function confirmPayment(tipo) { alert("Transacción cuántica confirmada."); closeModal(); doJump(tipo); }
+
+        function doJump(tipo) {
+            const flash = document.getElementById('flash');
+            const targetPos = (tipo === 'CABINA') ? selectedLocation.centerPos : [selectedLocation.lat, selectedLocation.lng];
+            addToHistory(selectedLocation.city, tipo, targetPos[0], targetPos[1]);
+            flash.style.opacity = '1';
+            setTimeout(() => {
+                flash.style.opacity = '0';
+                document.getElementById('preview').style.display = 'none';
+                if(targetSignalMarker) { map.removeLayer(targetSignalMarker); targetSignalMarker = null; }
+                if(jumpLine) { map.removeLayer(jumpLine); jumpLine = null; }
+                if(portalMarker) map.removeLayer(portalMarker);
+                const currentPortal = L.marker(targetPos, { icon: L.divIcon({ className: '', html: '<div class="portal-marker"></div>', iconSize: [40, 40] }) }).addTo(map);
+                portalMarker = currentPortal;
+                map.flyTo(targetPos, 18);
+                userPos = targetPos;
+                userCountryCode = selectedLocation.countryCode; 
+                userMarker.setLatLng(userPos);
+                setTimeout(() => { if(currentPortal) map.removeLayer(currentPortal); }, 5000);
+            }, 600);
+        }
+
+        function addToHistory(city, type, lat, lng) {
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const displayType = type === 'EXACTO' ? 'COORDENADAS' : 'CABINA';
+            travelHistory.unshift({ city, type: displayType, time, lat, lng });
+            updateHistoryUI();
+        }
+
+        function updateHistoryUI() {
+            const list = document.getElementById('history-list');
+            if (travelHistory.length === 0) return;
+            list.innerHTML = travelHistory.map((item, index) => {
+                return `<div class="history-item" onclick="selectFromHistory(${index})">
+                    <div>
+                        <div class="history-dest">${item.city}</div>
+                        <div style="font-size:10px; color:#777;">${item.time}</div>
+                    </div>
+                    <div class="history-type">${item.type}</div>
+                </div>`;
+            }).join('');
+        }
+
+        function selectFromHistory(index) {
+            const item = travelHistory[index];
+            reverseGeocode(item.lat, item.lng);
+        }
+
+        function setSub(t) {
+            activeSub = t;
+            const badge = document.getElementById('plan-trigger');
+            const display = document.getElementById('plan-display');
+            badge.className = 'plan-badge';
+            if(t === 'CABINAS') { badge.classList.add('plan-cabinas'); display.innerText = "Plan Cabinas"; }
+            else if(t === 'TOTAL') { badge.classList.add('plan-total'); display.innerText = "Plan Total VIP"; }
+            closeModal();
+            updateHistoryUI(); 
+            alert("Protocolo " + t + " activo.");
+        }
+
+        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+    </script>
+</body>
+</html>
