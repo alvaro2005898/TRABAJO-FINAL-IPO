@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeleMaps - Acceso Cuántico</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="main.css">
+</head>
+<body class="auth-body">
+    <div class="bg-grid"></div>
+
+    <div class="auth-card">
+        <div class="logo">Tele<span>Maps</span></div>
+        <div id="error-msg"></div>
+
+        <div id="login-section">
+            <form onsubmit="handleLogin(event)">
+                <div class="input-group">
+                    <label>Correo Electrónico</label>
+                    <input type="email" id="login-email" placeholder="viajero@quantum.com" required>
+                </div>
+                <div class="input-group">
+                    <label>Contraseña</label>
+                    <div class="pwd-wrapper">
+                        <input type="password" id="login-pwd" placeholder="••••••••" required>
+                        <div class="eye-icon" onclick="togglePwd('login-pwd')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn-action">Iniciar Sesión</button>
+            </form>
+
+            <div class="divider">O continuar con</div>
+
+            <button class="social-btn" onclick="openSimModal('Google', 'login')">
+                <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                Google
+            </button>
+            <button class="social-btn" onclick="openSimModal('Apple', 'login')">
+                <svg viewBox="0 0 24 24" fill="white"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.14-.49-3.19 0-1.01.47-1.99.55-2.92-.35C3.33 15.65 2.51 9.41 6.81 6.47c1.39-.95 2.86-1.07 3.99-.5 1.04.53 1.77.53 2.81 0 1.25-.63 2.65-.45 3.88.38 1.44 1.12 2.2 2.63 2.22 2.66-2.48 1.54-2.07 4.99.39 6.2-.47 1.29-1.12 2.61-2.05 3.53v1.54zM15.13 4.14c.73-.89 1.22-2.13 1.09-3.35-1.06.04-2.39.7-3.15 1.62-.68.82-1.25 2.11-1.09 3.31 1.17.09 2.42-.69 3.15-1.58z"/></svg>
+                Apple
+            </button>
+            <button class="social-btn" onclick="openSimModal('Facebook', 'login')">
+                <svg viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                Facebook
+            </button>
+            
+            <div class="switch-auth">¿No tienes autorización? <a href="#" onclick="switchAuthMode('register')">Regístrate aquí</a></div>
+        </div>
+
+        <div id="register-section" style="display: none;">
+            <form onsubmit="handleRegister(event)">
+                <div class="input-row">
+                    <div class="input-group"><label>Nombre</label><input type="text" id="reg-name" required></div>
+                    <div class="input-group"><label>Apellidos</label><input type="text" id="reg-surname" required></div>
+                </div>
+                <div class="input-group"><label>Correo Electrónico</label><input type="email" id="reg-email" required></div>
+                <div class="input-group">
+                    <label>Contraseña</label>
+                    <div class="pwd-wrapper">
+                        <input type="password" id="reg-pwd" required minlength="8">
+                        <div class="eye-icon" onclick="togglePwd('reg-pwd')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Repetir Contraseña</label>
+                    <div class="pwd-wrapper">
+                        <input type="password" id="reg-pwd2" required minlength="8">
+                        <div class="eye-icon" onclick="togglePwd('reg-pwd2')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>
+                    </div>
+                </div>
+                <button type="submit" class="btn-action">Crear Cuenta</button>
+            </form>
+
+            <div class="divider">O regístrate con</div>
+
+            <button class="social-btn" onclick="openSimModal('Google', 'register')">
+                <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                Google
+            </button>
+            <button class="social-btn" onclick="openSimModal('Apple', 'register')">
+                <svg viewBox="0 0 24 24" fill="white"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.14-.49-3.19 0-1.01.47-1.99.55-2.92-.35C3.33 15.65 2.51 9.41 6.81 6.47c1.39-.95 2.86-1.07 3.99-.5 1.04.53 1.77.53 2.81 0 1.25-.63 2.65-.45 3.88.38 1.44 1.12 2.2 2.63 2.22 2.66-2.48 1.54-2.07 4.99.39 6.2-.47 1.29-1.12 2.61-2.05 3.53v1.54zM15.13 4.14c.73-.89 1.22-2.13 1.09-3.35-1.06.04-2.39.7-3.15 1.62-.68.82-1.25 2.11-1.09 3.31 1.17.09 2.42-.69 3.15-1.58z"/></svg>
+                Apple
+            </button>
+            <button class="social-btn" onclick="openSimModal('Facebook', 'register')">
+                <svg viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                Facebook
+            </button>
+
+            <div class="switch-auth">¿Ya tienes una cuenta? <a href="#" onclick="switchAuthMode('login')">Inicia sesión</a></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="sim-modal">
+        <div class="payment-card" style="width: 320px; padding: 25px;">
+            <h3 id="sim-title" style="margin-top:0;">Selecciona una cuenta</h3>
+            <div id="sim-accounts-list"></div>
+            <div class="sim-cancel-btn" onclick="closeSimModal()">Cancelar</div>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="mapEngine.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
